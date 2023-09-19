@@ -18,7 +18,8 @@ von Dahlen, J.K., Schulz, K., Nicolai, J., Rose, L.E. (2023): Global expression 
 # Requirements & Setup
 The pipeline is meant to run on a UNIX based server with the exception of PRIMER which only runs natively on Windows XP or later.  
 You will need to install the following programs in advance:  
-* Trimmomatic
+* [Trimmomatic][1]
+[1]: https://github.com/usadellab/Trimmomatic "Title"
 * FastQC
 * Kallisto
 * R version X
@@ -31,7 +32,10 @@ You will need to install the following programs in advance:
 Obtain the transcriptomic data you want to analyze. The data can either be obtained through your own sequencing or downloading the .fastq files from databases like NCBI.
 You must have one .fastq file per transcriptome for single-end sequencing data and two files for paired-end. It might be necessary to split your .fastq file for paired-end sequencing data. Detailed instruction can be found e.g. on the NCBI website.
 
-## Trimming the transcriptomes
+## Trimmomatic - Trimming the transcriptomes
 To remove low-quality reads and adapter sequencess from the transcriptomes (.fastq) we used Trimmomatic (Bolger et al., 2014). We used the standard parameters. Sample command:  
   
 `java -jar trimmomatic-0.35.jar PE -phred33 input_forward.fq.gz input_reverse.fq.gz output_forward_paired.fq.gz output_forward_unpaired.fq.gz output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36`
+
+### Adapter Sequences
+The adapter sequences that should be removed from the sequencing data need to be adjusted based on the sequencing method used. Illumina adapters are included in the Trimmomatic download. For further reference see https://github.com/usadellab/Trimmomatic
