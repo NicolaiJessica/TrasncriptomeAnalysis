@@ -88,3 +88,10 @@ Example:
 |SRA2|Mock|
 |SRA3|Treatment1|
 |SRA4|Treatment2|
+
+| Sample 	| Conditon  	|
+|--------	|-----------	|
+| SRA1   	| Mock      	|
+| SRA2   	| Mock      	|
+| SRA3   	| Treatment 	|
+| SRA4   	| Treatment 	|
