@@ -63,7 +63,7 @@ Example command:
   
 ## Sleuth - differential expression analysis
 Differentially expressed genes between conditions (e.g. roots vs. shoot or pathogen-treated vs non-treated transcriptomes) were identified using the R package Sleuth (Pimentel et al., 2017).  
-Example command:  
+The p-values need to be adjusted using the Benjamini-Hochberg correction (FDR ≤ 0.05; Benjamini & Hochberg, 1995). Since Sleuth relies on replicates within treatments, transcriptomes without replicates need to be removed from the analysis.   
   
 ### Specify the directory with your kallisto results:  
 `sample_id <- dir(file.path("..", "results"))`
@@ -89,7 +89,7 @@ Example table:
 | SRA1   	    | Mock      	|
 | SRA2   	    | Mock      	|
 | SRA3   	    | Treatment 	|
-| SRA4   	    | Treatment 	|
+| SRA4   	    | Treatment 	|  
   
 ```
 s2c <- read.table(file.path(".."), header = TRUE, stringsAsFactors=FALSE)
@@ -102,9 +102,165 @@ s2c <- dplyr::select(s2c, sample = run_accession, condition)
   
 The output from `print(s2c)` should look like this:  
   
-| **Sample** 	| **Conditon**  |   path                        |
-|--------	    |-----------	|                               |
-| SRA1   	    | Mock      	|   ../results/SRA1/kallisto    |
-| SRA2   	    | Mock      	|   ../results/SRA2/kallisto    |
-| SRA3   	    | Treatment 	|   ../results/SRA3/kallisto    |
-| SRA4   	    | Treatment 	|   ../results/SRA4/kallisto    |
+| **Sample** 	| **Conditon** 	| **Path**                 	|
+|------------	|--------------	|--------------------------	|
+| SRA1       	| Mock         	| ../results/SRA1/kallisto 	|
+| SRA2       	| Mock         	| ../results/SRA2/kallisto 	|
+| SRA3       	| Treatment    	| ../results/SRA3/kallisto 	|
+| SRA4       	| Treatment    	| ../results/SRA4/kallisto 	|  
+  
+### Optional - Adding gene annotation:
+
+`t2g <- read.table("..", header = TRUE, stringsAsFactors = FALSE)`
+
+### Construction of "sleuth object" and fitting a model:
+  
+```
+so <- sleuth_prep(s2c, ~condition, target_mapping = t2g, read_bootstrap_tpm = TRUE, extra_bootstrap_summary = TRUE, transformation_function = function(x) log2(x + 0.5))
+so <- sleuth_fit(so, ~condition, 'full')
+so <- sleuth_fit(so, ~1, 'reduced')
+```  
+  
+If you did not provide an annotation file, remove "target_mapping = t2g" from the first command of this step.  
+
+### Likelihood ratio test:
+
+```
+so <- sleuth_lrt(so, 'reduced', 'full')
+sleuth_table_lrt <- sleuth_results(so, 'reduced:full', 'lrt', show_all = FALSE) #output mit allen Ergebnissen
+sleuth_significant_lrt <- dplyr::filter(sleuth_table_lrt, qval <= 0.05) #nur signifikanter output
+write.csv(sleuth_table_lrt, file = file.path(".."))
+write.csv(sleuth_significant_lrt, file = file.path(".."))
+```
+
+### Wald test / folchange calculation / significant expression differences calculation:
+First you need to specify for which condition you want to perform the calculation.  
+The available condions can be accessed by executing `models(so)`.  
+
+so <- sleuth_wt(so, which_beta = 'sampletypeMOV10_overexpression')
+```
+  mod <- so$fits[["full"]]$design_matrix
+  x <- colnames(mod)
+  for (i in x){
+    if (i != "(Intercept)"){
+      so <- sleuth_wt(so, i, 'full')
+      results_Wald_table <- sleuth_results(so, i, test_type = "wt") #output aller Ergebnisse
+      sleuth_Wald_significant <- dplyr::filter(results_Wald_table, qval <= 0.05) #output signifikant
+      write.table(results_Wald_table, file = file.path(paste0(base_dir, c, "_", i, "_wald_t.csv")), sep="\t")
+      write.csv(sleuth_Wald_significant, file = file.path(paste0(base_dir, c, "_", i, "_wald_significant.csv")))
+```
+
+## PRIMER - multivariate analysis of expression differences
+Gene expression levels can be affected among other factors by the tissue, the genotype or the treatment. To identify the factors associated with differences in expression of genes across transcriptomes, we performed an ANOSIM in Primer 7.0.13 (PRIMER-e). ANOSIM is a non-parametric statistical test similar to ANOVA. As sample data, an excel sheet table with TPM-values was used (File > open > choose input data > sample data (no titles, data type: unknown/other). Missing values were treated as blanks. The sample data should have the following format:  
+  
+|               	| **Transciptome 1** 	| **Transciptome 2** 	| **Transciptome 3** 	| **Transciptome 4** 	| **Transciptome 5** 	| **...** 	|
+|---------------	|--------------------	|--------------------	|--------------------	|--------------------	|--------------------	|---------	|
+| **Gene-ID 1** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 2** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 3** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 4** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 5** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 6** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 7** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **Gene-ID 8** 	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|
+| **...**       	| TPM                	| TPM                	| TPM                	| TPM                	| TPM                	| TPM     	|  
+  
+To add factors to the data set, choose: edit>factors. The factor data should have the following format:  
+  
+|                     	| **Factor 1 -  Tissue** 	| **Factor 2 - Treatment** 	| **Factor 3 - Genotype** 	| **...** 	|
+|---------------------	|------------------------	|--------------------------	|-------------------------	|---------	|
+| **Transcriptome 1** 	| Root                   	| Mock                     	| AB                      	| ...     	|
+| **Transcriptome 1** 	| Root                   	| Treatment                	| AB                      	| ...     	|
+| **Transcriptome 1** 	| Shoot                  	| Mock                     	| AB                      	| ...     	|
+| **Transcriptome 1** 	| Shoot                  	| Treatment                	| BB                      	| ...     	|
+| **Transcriptome 1** 	| Root                   	| Treatment                	| BB                      	| ...     	|
+| **...**             	| ...                    	| ...                      	| ...                     	| ...     	|  
+  
+The starting point of the analysis is a pairwise dissimilarity matrix. In our case, the dissimilarity matrix was computed as follows: First the TPM values for each gene within each transcriptome were LOG (x+1) transformed (Pre-treatment > transform overall > LOG(x+1)) and standardized across libraries (Pre-treatment > standardized: Standardizes samples by total). On the basis of these transformed TPM values, the dissimilarity in gene expression patterns between transcriptomes were calculated based on Euclidean distances (`Analyze > resemblance > Euclidean distance > analyze between samples`). Ranking was applied to the distance matrix.  
+  
+### ANOSIM
+To determine if gene expression is more similar within groups than between groups (for example when groups are defined by infection status or tissue type) the R test statistic value was calculated. The R values can range from -1 to 1, with larger values corresponding to greater differences between groups (Analyze > ANOSIM > Model: one-way-A > choose factor). Statistical significance is calculated through 999x permutations of the group labels and recalculation of the R value for each replicate. 
+
+### PCA
+For visualizing data as PCA click: `Standardize dataset > analyze > PCA`.  
+  
+#### R value categories:  
+  
+| **R value**        	| **Meaning?**                                    	|
+|--------------------	|-------------------------------------------------	|
+| **0.75 < R < 1**   	| highly different                                	|
+| **0.5 < R < 0.75** 	| different                                       	|
+| **0.25 < R < 0.5** 	| different with some overlap                     	|
+| **0.1 < R < 0.25** 	| similar with some differences (or high overlap) 	|
+| **R < 0.1**        	| similar                                         	|  
+  
+
+## Statistics
+Next to ANOSIM, other statistic tests such as the Mann-Whitney-U test (Mann & Whitney, 1947) or the Spearman's rank correlation (Hollander et al., 2013) can be performed. The following statistic tests were performed in R.  
+
+For testing the data for normal distribution (<5000 data points per column), the Shapiro test can be used (Shapiro & Wilk, 1965):
+  
+`shapiro.test(file name[,x])`
+  
+Comments: 
+* The [,1] is referring to the text column which should be analyzed
+* p <0.05: data is non-normal distributed
+* p ≥0.05: data is normal distributed
+
+For testing >5000 data points per column for normal distribution, the ad.test within the Nortest Packet can be used.  
+  
+For testing the data for equal variance, the var.test can be used:  
+  
+`var.test(file name[,x], file name[,y], alternative="two.sided")`
+  
+Comments:
+* Data can be either tested for “one.sided” or “two.sided”
+* p-value ≥ 0.05: equal variance
+* p-value < 0.05: unequal variance
+
+Non normal-distributed data sets can be analyzed using the Mann-Whitney-U test:
+
+ >wilcox.test(file name[,x],file name[,y],alternative="two.sided")
+
+Comments:
+•	p-value ≥ 0.05: accept null hypothesis 
+•	p-value < 0.05: reject null hypothesis (significant difference)
+
+Normal-distributed data sets can be analyzed using a student’s t-test:
+
+> t.test(file name[,x],file name[,y],alternative="two.sided",var.equal=TRUE)
+
+Comments:
+•	in case the variance is not equal choose option: var.equal=FALSE
+•	p-value ≥ 0.05: accept null hypothesis 
+•	p-value < 0.05: reject null hypothesis (significant difference)
+
+Spearman's rank correlations (Hollander et al., 2013) are a non-parametric measure of statistical dependency between two variables. To perform a Spearman's rank correlation:
+
+ >cor.test(file name[,x],file name[,y],alternative="greater",method=c("spearman"), exact =NULL, continuity = TRUE)
+
+Comments:
+•	in case there is a negative association use: alternative =”less”
+•	Exact: a logical indicating whether an exact p-value should be computed or not
+
+To estimate the strength of the association the Rho value can be used:
+Rho 0.00-0.19: very weak association
+Rho 0.20-0.39: weak association
+Rho 0.40-0,59: moderate association
+Rho 0.60-0.79: strong association
+Rho 0.80-1.00: very strong association
+
+# How to cite us?
+
+von Dahlen, J.K., Schulz, K., Nicolai, J., Rose, L.E. (2023): Global expression patterns of R-genes in tomato and potato. Frontiers in Plant Science.
+
+# References
+Bolger, A. M., Lohse, M., & Usadel, B. (2014). Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics, 30(15), 2114-2120.  
+Andrews S. (2010). FastQC: a quality control tool for high throughput sequence data. Available online at: http://www.bioinformatics.babraham.ac.uk/projects/fastqc  
+Bray, N. L., Pimentel, H., Melsted, P., & Pachter, L. (2016). Near-optimal probabilistic RNA-seq quantification. Nature biotechnology, 34(5), 525.  
+Wagner, G. P., Kin, K., & Lynch, V. J. (2012). Measurement of mRNA abundance using RNA-seq data: RPKM measure is inconsistent among samples. Theory in biosciences, 131(4), 281-285.  
+Pimentel, H., Bray, N. L., Puente, S., Melsted, P., & Pachter, L. (2017). Differential analysis of RNA-seq incorporating quantification uncertainty. Nature methods, 14(7), 687.  
+Benjamini, Y., & Hochberg, Y. (1995). Controlling the false discovery rate: a practical and powerful approach to multiple testing. Journal of the Royal statistical society: series B (Methodological), 57(1), 289-300.  
+Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality (complete samples). Biometrika, 52(3/4), 591-611.  
+Mann, H. B., & Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. The annals of mathematical statistics, 50-60.  
+Hollander, M., Wolfe, D. A., & Chicken, E. (2013). Nonparametric statistical methods (Vol. 751). John Wiley & Sons.  
