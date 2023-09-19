@@ -68,5 +68,23 @@ Example command:
 ### Specify the directory with your kallisto results:  
 `sample_id <- dir(file.path("..", "results"))`
   
-After typing `sample_id` your output should look something like this:  
-\## [1] "SRA1" "SRA2" "SRA3" "SRA4"
+After executing `sample_id` your output should look like this:  
+  
+`\## [1] "SRA1" "SRA2" "SRA3" "SRA4"`
+
+### Add paths for each result:  
+  
+`kal_dirs <- file.path("..", "results", sample_id, "kallisto")`
+
+The output of `kal_dirs` should look look like this:  
+  
+`## [1] "../results/SRA1/kallisto" "../results/SRA2/kallisto"`
+
+### Adding the experimental design information:  
+You need to supply a table that specifies which treatment each SRA belongs to. 
+Example:  
+|sample|condition|
+|SRA1|Mock|
+|SRA2|Mock|
+|SRA3|Treatment1|
+|SRA4|Treatment2|
