@@ -82,16 +82,29 @@ The output of `kal_dirs` should look look like this:
 
 ### Adding the experimental design information:  
 You need to supply a table that specifies which treatment each SRA belongs to. 
-Example:  
-|sample|condition|
-|SRA1|Mock|
-|SRA2|Mock|
-|SRA3|Treatment1|
-|SRA4|Treatment2|
+Example table:  
 
-| Sample 	| Conditon  	|
-|--------	|-----------	|
-| SRA1   	| Mock      	|
-| SRA2   	| Mock      	|
-| SRA3   	| Treatment 	|
-| SRA4   	| Treatment 	|
+| **Sample** 	| **Conditon**  |
+|--------	    |-----------	|
+| SRA1   	    | Mock      	|
+| SRA2   	    | Mock      	|
+| SRA3   	    | Treatment 	|
+| SRA4   	    | Treatment 	|
+  
+```
+s2c <- read.table(file.path(".."), header = TRUE, stringsAsFactors=FALSE)
+s2c <- dplyr::select(s2c, sample = run_accession, condition)
+```  
+
+### Appending kal_dirs to table:  
+
+`s2c <- dplyr::mutate(s2c, path = kal_dirs)`  
+  
+The output from `print(s2c)` should look like this:  
+  
+| **Sample** 	| **Conditon**  |   path                        |
+|--------	    |-----------	|                               |
+| SRA1   	    | Mock      	|   ../results/SRA1/kallisto    |
+| SRA2   	    | Mock      	|   ../results/SRA2/kallisto    |
+| SRA3   	    | Treatment 	|   ../results/SRA3/kallisto    |
+| SRA4   	    | Treatment 	|   ../results/SRA4/kallisto    |
