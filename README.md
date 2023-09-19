@@ -18,8 +18,7 @@ von Dahlen, J.K., Schulz, K., Nicolai, J., Rose, L.E. (2023): Global expression 
 # Requirements & Setup
 The pipeline is meant to run on a UNIX based server with the exception of PRIMER which only runs natively on Windows XP or later.  
 You will need to install the following programs in advance:  
-* [Trimmomatic][1]
-[1]: https://github.com/usadellab/Trimmomatic "Title"
+* [Trimmomatic](https://github.com/usadellab/Trimmomatic)
 * FastQC
 * Kallisto
 * R version X
