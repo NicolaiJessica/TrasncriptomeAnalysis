@@ -28,7 +28,7 @@ You will need to install the following programs in advance:
 # Preparing your data
 ## Data set
 This pipeline can be run by using publicly available transcriptomes as well as self-generated ones. Publicly available transcriptomes can be analyzed downloading the .fastq files from databases like NCBI. 
-You must have one .fastq file per transcriptome for single-end sequencing data and two files for paired-end. For paired-end sequencing data that only consists of one single .fastq file containing both the forward and reverse reads you need to split your .fastq file. Detailed instruction for how to download pubically available transcriptomes and how to split them can be found e.g. on the NCBI website.
+You must have one .fastq file per transcriptome for single-end sequencing data and two files for paired-end. For paired-end sequencing data that only consists of one single .fastq file containing both the forward and reverse reads you need to split your .fastq file. Detailed instruction for how to download publicly available transcriptomes and how to split them can be found e.g. on the NCBI website.
 
 ## Trimmomatic - trimming the transcriptomes
 To remove low-quality reads and adapter sequences from the transcriptomes (.fastq) we used Trimmomatic with standard parameters (Bolger et al., 2014).   
@@ -88,14 +88,14 @@ The output of `kal_dirs` should look like this:
 In the next step, you need to supply a table that specifies which treatment each SRA belongs to. 
 Example table:  
 
-| **Sample** 	| **Condition**  |
-|--------	    |-----------	|
-| SRA1   	    | Mock      	|
-| SRA2   	    | Mock      	|
-| SRA3   	    | Mock 	        |
-| SRA4   	    | Treatment 	|
-| SRA5   	    | Treatment 	|
-| SRA6   	    | Treatment 	|
+| **Sample** 	| **Condition**   |
+|--------	    |-----------	    |
+| SRA1   	    | Mock           	|
+| SRA2   	    | Mock          	|
+| SRA3   	    | Mock 	          |
+| SRA4   	    | Treatment     	|
+| SRA5   	    | Treatment     	|
+| SRA6   	    | Treatment     	|
   
 ```
 s2c <- read.table(file.path(".."), header = TRUE, stringsAsFactors=FALSE)
@@ -108,11 +108,11 @@ s2c <- dplyr::select(s2c, sample = run_accession, condition)
   
 The output from `print(s2c)` should look like this:  
   
-| **Sample** 	| **Condition** 	| **Path**                 	|
+| **Sample** 	| **Condition** | **Path**                  |
 |------------	|--------------	|--------------------------	|
 | SRA1       	| Mock         	| ../results/SRA1/kallisto 	|
 | SRA2       	| Mock         	| ../results/SRA2/kallisto 	|
-| SRA3       	| Mock      	| ../results/SRA3/kallisto 	|
+| SRA3       	| Mock        	| ../results/SRA3/kallisto 	|
 | SRA4       	| Treatment    	| ../results/SRA4/kallisto 	|
 | SRA5       	| Treatment    	| ../results/SRA5/kallisto 	|
 | SRA6       	| Treatment    	| ../results/SRA6/kallisto 	|  
@@ -182,7 +182,7 @@ To determine if gene expression is more similar within groups than between group
   
 #### R value categories:  
   
-| **R value**        	| **Meaning?**                                    	|
+| **R value**        	| **Meaning**                                    	|
 |--------------------	|-------------------------------------------------	|
 | **0.75 < R < 1**   	| highly different                                	|
 | **0.5 < R < 0.75** 	| different                                       	|
@@ -198,12 +198,12 @@ Next to ANOSIM, other statistic tests such as the Mann-Whitney-U test (Mann & Wh
 
 The data should have to following format:
   
-| **Data row 1**        | **Data row 2**                    |
+| **Data row 1**      | **Data row 2**                    |
 |--------------------	|-----------------------------------|
-| TPM / DEG    	        | TPM / DEG                         |
+| TPM / DEG    	      | TPM / DEG                         |
 | TPM / DEG          	| TPM / DEG                         |
-| TPM / DEG	            | TPM / DEG                     	|
-| TPM / DEG 	        | TPM / DEG                     	|
+| TPM / DEG	          | TPM / DEG                        	|
+| TPM / DEG 	        | TPM / DEG                        	|
 | ...               	| ...                             	|  
 
 ### Shapiro test - testing for normal distribution
@@ -216,7 +216,7 @@ Comments:
 * p <0.05: data is non-normal distributed
 * p ≥0.05: data is normal distributed
 
-For testing >5000 data points per column for normal distribution, the ad.test within the Nortest Packet can be used.  
+For testing >5000 data points per column for normal distribution, the ad.test within the Nortest package can be used.  
   
 ### Testing for equal variance  
 For testing the data for equal variance, the var.test can be used:  
@@ -228,7 +228,7 @@ Comments:
 * p-value ≥ 0.05: equal variance
 * p-value < 0.05: unequal variance
   
-### Mann-Witney-U test for non-parametric data
+### Mann-Whitney-U test for non-parametric data
 Non-parametric data sets can be analyzed using the Mann-Whitney-U test:
 
 `wilcox.test(file name[,x],file name[,y],alternative="two.sided")`
