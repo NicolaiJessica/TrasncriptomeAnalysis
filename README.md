@@ -191,7 +191,7 @@ To determine if gene expression is more similar within groups than between group
 | **R < 0.1**        	| similar                                         	|  
   
 ### PCA
-For visualizing data as PCA click: `Standardize dataset > analyze > PCA`.  
+For visualizing data as PCA pick the standardize dataset and choose: `analyze > PCA`.  
     
 ## Statistics
 Next to ANOSIM, other statistic tests such as the Mann-Whitney-U test (Mann & Whitney, 1947) or the Spearman's rank correlation (Hollander et al., 2013) can be performed. The following statistic tests were performed in R.  
