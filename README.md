@@ -21,41 +21,40 @@ You will need to install the following programs in advance:
 * [Trimmomatic](https://github.com/usadellab/Trimmomatic)
 * [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 * [Kallisto](https://pachterlab.github.io/kallisto/manual)
-* R version X
-* R package
-** [Sleuth](https://github.com/pachterlab/sleuth)
+* R version >= 3.6.3
+* R package: [Sleuth](https://github.com/pachterlab/sleuth)
 * [PRIMER](https://www.primer-e.com/)
 
-# Preparing your data (set)
+# Preparing your data
 ## Data set
-Obtain the transcriptomic data you want to analyze. The data can either be obtained through your own sequencing or downloading the .fastq files from databases like NCBI.
-You must have one .fastq file per transcriptome for single-end sequencing data and two files for paired-end. It might be necessary to split your .fastq file for paired-end sequencing data. Detailed instruction can be found e.g. on the NCBI website.
+This pipeline can be run by using publicly available transcriptomes as well as self-generated ones. Publicly available transcriptomes can be analyzed downloading the .fastq files from databases like NCBI. 
+You must have one .fastq file per transcriptome for single-end sequencing data and two files for paired-end. For paired-end sequencing data that only consists of one single .fastq file containing both the forward and reverse reads you need to split your .fastq file. Detailed instruction for how to download pubically available transcriptomes and how to split them can be found e.g. on the NCBI website.
 
 ## Trimmomatic - trimming the transcriptomes
-To remove low-quality reads and adapter sequencess from the transcriptomes (.fastq) we used Trimmomatic (Bolger et al., 2014). We used the standard parameters.  
+To remove low-quality reads and adapter sequences from the transcriptomes (.fastq) we used Trimmomatic with standard parameters (Bolger et al., 2014).   
 Example command:  
   
-`java -jar trimmomatic-0.35.jar PE -phred33 input_forward.fq.gz input_reverse.fq.gz output_forward_paired.fq.gz output_forward_unpaired.fq.gz output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36`
+`java -jar trimmomatic-0.39.jar PE -phred33 input_forward.fq.gz input_reverse.fq.gz output_forward_paired.fq.gz output_forward_unpaired.fq.gz output_reverse_paired.fq.gz output_reverse_unpaired.fq.gz ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36`
 
 ### Adapter sequences
 The adapter sequences that should be removed from the sequencing data need to be adjusted based on the sequencing method used. Illumina adapters are included in the Trimmomatic download. For further reference see https://github.com/usadellab/Trimmomatic
 
 ## FastQC - qualilty control
-Quality controls of trimmed transcriptomes were performed using FastQC (Andrews, 2010). Transcriptomes with overall low-quality or remaining adapters were removed from study.  
+Quality controls of trimmed transcriptomes were performed using FastQC (Andrews, 2010). Transcriptomes with overall low-quality or remaining adapters were removed from study. For further reference see https://github.com/s-andrews/FastQC  
 Example command:  
   
 `fastqc seqfile1 seqfile2 .. seqfileN`
 
 ## Kallisto - calculation of transcript abundances 
-The program Kallisto (v.0.46.0) can be used to estimate the relative expression of genes (Bray et al., 2016). As a first step, the raw sequence reads were compared to the transcript sequences. This step in Kallisto is designated as the pseudoalignment step. As Kallisto requires information on fragment length for single-end sequenced transcriptomes, the fragment length denoted by the authors was used. If this information was not available, the recommended fragment length of the reported RNA isolation kit was used. 
+The program Kallisto (v.0.46.0) can be used to estimate the relative expression of genes (Bray et al., 2016). As a first step, the raw sequence reads were compared to the transcript sequences. This step in Kallisto is designated as the pseudoalignment step. As Kallisto requires information on fragment length for single-end sequenced transcriptomes, the fragment length denoted by the authors was used. If this information was not available, the recommended fragment length of the reported RNA isolation kit was used. For further reference see https://github.com/pachterlab/kallisto
 
 ### Building an index
-Before using Kallisto to calculate transcript abundance an index has to be build. The index is used to identify/map the transcriptomic data. In our study we used the CDS to build the index. You need one index for each species you want to analyze.  
+Before using Kallisto to calculate transcript abundance an index has to be build. The index is used to pseudoalign the raw transcriptomic data to the transcript sequences. In our study we used the CDS to build the index. One index for each species you want to analyze is necessary.  
 Example command:  
   
 `kallisto index [arguments] FASTA-files`
 
-### TMP calculation
+### TPM calculation
 Transcript abundance was calculated as transcripts per million (TPM; Wagner et al., 2012). TPM normalizes the transcript abundance for gene length and sequencing depth, making TPM values comparable across transcriptomes. To increase the robustness of this calculation we recommend using the -b argument to run the analysis with bootstrap replicates. 
 Example command:  
   
@@ -65,55 +64,64 @@ Example command:
 Differentially expressed genes between conditions (e.g. roots vs. shoot or pathogen-treated vs non-treated transcriptomes) were identified using the R package Sleuth (Pimentel et al., 2017).  
 The p-values need to be adjusted using the Benjamini-Hochberg correction (FDR ≤ 0.05; Benjamini & Hochberg, 1995). Since Sleuth relies on replicates within treatments, transcriptomes without replicates need to be removed from the analysis.   
   
-### Specify the directory with your kallisto results:  
+### Loading sleuth
+  
+`library("sleuth")`  
+  
+### Specify the directory with your kallisto results  
+The input for sleuth are the .tsv and .h5 file that Kallisto generates. The results for each transcriptome must be in their own directory and the directory should be named after the SRA.  
 `sample_id <- dir(file.path("..", "results"))`
   
 After executing `sample_id` your output should look like this:  
   
-`## [1] "SRA1" "SRA2" "SRA3" "SRA4"`
+`## [1] "SRA1" "SRA2" "SRA3" "SRA4" "SRA5" "SRA6`
 
-### Add paths for each result:  
+### Add paths for each result  
   
 `kal_dirs <- file.path("..", "results", sample_id, "kallisto")`
 
-The output of `kal_dirs` should look look like this:  
+The output of `kal_dirs` should look like this:  
   
 `## [1] "../results/SRA1/kallisto" "../results/SRA2/kallisto"`
 
-### Adding the experimental design information:  
-You need to supply a table that specifies which treatment each SRA belongs to. 
+### Adding the experimental design information  
+In the next step, you need to supply a table that specifies which treatment each SRA belongs to. 
 Example table:  
 
-| **Sample** 	| **Conditon**  |
+| **Sample** 	| **Condition**  |
 |--------	    |-----------	|
 | SRA1   	    | Mock      	|
 | SRA2   	    | Mock      	|
-| SRA3   	    | Treatment 	|
-| SRA4   	    | Treatment 	|  
+| SRA3   	    | Mock 	        |
+| SRA4   	    | Treatment 	|
+| SRA5   	    | Treatment 	|
+| SRA6   	    | Treatment 	|
   
 ```
 s2c <- read.table(file.path(".."), header = TRUE, stringsAsFactors=FALSE)
 s2c <- dplyr::select(s2c, sample = run_accession, condition)
 ```  
 
-### Appending kal_dirs to table:  
+### Appending kal_dirs to table  
 
 `s2c <- dplyr::mutate(s2c, path = kal_dirs)`  
   
 The output from `print(s2c)` should look like this:  
   
-| **Sample** 	| **Conditon** 	| **Path**                 	|
+| **Sample** 	| **Condition** 	| **Path**                 	|
 |------------	|--------------	|--------------------------	|
 | SRA1       	| Mock         	| ../results/SRA1/kallisto 	|
 | SRA2       	| Mock         	| ../results/SRA2/kallisto 	|
-| SRA3       	| Treatment    	| ../results/SRA3/kallisto 	|
-| SRA4       	| Treatment    	| ../results/SRA4/kallisto 	|  
+| SRA3       	| Mock      	| ../results/SRA3/kallisto 	|
+| SRA4       	| Treatment    	| ../results/SRA4/kallisto 	|
+| SRA5       	| Treatment    	| ../results/SRA5/kallisto 	|
+| SRA6       	| Treatment    	| ../results/SRA6/kallisto 	|  
   
-### Optional - Adding gene annotation:
+### Optional - Adding gene annotation
 
 `t2g <- read.table("..", header = TRUE, stringsAsFactors = FALSE)`
 
-### Construction of "sleuth object" and fitting a model:
+### Construction of "sleuth object" and fitting a model
   
 ```
 so <- sleuth_prep(s2c, ~condition, target_mapping = t2g, read_bootstrap_tpm = TRUE, extra_bootstrap_summary = TRUE, transformation_function = function(x) log2(x + 0.5))
@@ -123,35 +131,26 @@ so <- sleuth_fit(so, ~1, 'reduced')
   
 If you did not provide an annotation file, remove "target_mapping = t2g" from the first command of this step.  
 
-### Likelihood ratio test:
+### Likelihood ratio test
 
 ```
 so <- sleuth_lrt(so, 'reduced', 'full')
-sleuth_table_lrt <- sleuth_results(so, 'reduced:full', 'lrt', show_all = FALSE) #output mit allen Ergebnissen
-sleuth_significant_lrt <- dplyr::filter(sleuth_table_lrt, qval <= 0.05) #nur signifikanter output
-write.csv(sleuth_table_lrt, file = file.path(".."))
-write.csv(sleuth_significant_lrt, file = file.path(".."))
-```
-
-### Wald test / folchange calculation / significant expression differences calculation:
+sleuth_table_lrt <- sleuth_results(so, 'reduced:full', 'lrt', show_all = FALSE) 
+sleuth_significant_lrt <- dplyr::filter(sleuth_table_lrt, qval <= 0.05) 
+```  
+  
+### Wald test / foldchange calculation / significant expression differences calculation
 First you need to specify for which condition you want to perform the calculation.  
-The available condions can be accessed by executing `models(so)`.  
-
-so <- sleuth_wt(so, which_beta = 'sampletypeMOV10_overexpression')
+The available conditions can be accessed by executing `models(so)`.  
+  
 ```
-  mod <- so$fits[["full"]]$design_matrix
-  x <- colnames(mod)
-  for (i in x){
-    if (i != "(Intercept)"){
-      so <- sleuth_wt(so, i, 'full')
-      results_Wald_table <- sleuth_results(so, i, test_type = "wt") #output aller Ergebnisse
-      sleuth_Wald_significant <- dplyr::filter(results_Wald_table, qval <= 0.05) #output signifikant
-      write.table(results_Wald_table, file = file.path(paste0(base_dir, c, "_", i, "_wald_t.csv")), sep="\t")
-      write.csv(sleuth_Wald_significant, file = file.path(paste0(base_dir, c, "_", i, "_wald_significant.csv")))
-```
-
+so <- sleuth_wt(so, condition, which_model = "full")  
+results_Wald_table <- sleuth_results(so, condition, test_type = "wt")  
+sleuth_Wald_significant <- dplyr::filter(results_Wald_table, qval <= 0.05)
+```  
+  
 ## PRIMER - multivariate analysis of expression differences
-Gene expression levels can be affected among other factors by the tissue, the genotype or the treatment. To identify the factors associated with differences in expression of genes across transcriptomes, we performed an ANOSIM in Primer 7.0.13 (PRIMER-e). ANOSIM is a non-parametric statistical test similar to ANOVA. As sample data, an excel sheet table with TPM-values was used (File > open > choose input data > sample data (no titles, data type: unknown/other). Missing values were treated as blanks. The sample data should have the following format:  
+Gene expression levels can be affected among other factors by the tissue, the genotype or the treatment. To identify the factors associated with differences in expression of genes across transcriptomes, we performed an ANOSIM in Primer 7.0.13 (PRIMER-e). ANOSIM is a non-parametric statistical test similar to ANOVA. As sample data, an excel sheet table with TPM-values was used (`File > open > choose input data > sample data` (no titles, data type: unknown/other). Missing values were treated as blanks. The sample data should have the following format:  
   
 |               	| **Transciptome 1** 	| **Transciptome 2** 	| **Transciptome 3** 	| **Transciptome 4** 	| **Transciptome 5** 	| **...** 	|
 |---------------	|--------------------	|--------------------	|--------------------	|--------------------	|--------------------	|---------	|
@@ -180,9 +179,6 @@ The starting point of the analysis is a pairwise dissimilarity matrix. In our ca
   
 ### ANOSIM
 To determine if gene expression is more similar within groups than between groups (for example when groups are defined by infection status or tissue type) the R test statistic value was calculated. The R values can range from -1 to 1, with larger values corresponding to greater differences between groups (Analyze > ANOSIM > Model: one-way-A > choose factor). Statistical significance is calculated through 999x permutations of the group labels and recalculation of the R value for each replicate. 
-
-### PCA
-For visualizing data as PCA click: `Standardize dataset > analyze > PCA`.  
   
 #### R value categories:  
   
@@ -194,21 +190,35 @@ For visualizing data as PCA click: `Standardize dataset > analyze > PCA`.
 | **0.1 < R < 0.25** 	| similar with some differences (or high overlap) 	|
 | **R < 0.1**        	| similar                                         	|  
   
-
+### PCA
+For visualizing data as PCA click: `Standardize dataset > analyze > PCA`.  
+    
 ## Statistics
 Next to ANOSIM, other statistic tests such as the Mann-Whitney-U test (Mann & Whitney, 1947) or the Spearman's rank correlation (Hollander et al., 2013) can be performed. The following statistic tests were performed in R.  
 
+The data should have to following format:
+  
+| **Data row 1**        | **Data row 2**                    |
+|--------------------	|-----------------------------------|
+| TPM / DEG    	        | TPM / DEG                         |
+| TPM / DEG          	| TPM / DEG                         |
+| TPM / DEG	            | TPM / DEG                     	|
+| TPM / DEG 	        | TPM / DEG                     	|
+| ...               	| ...                             	|  
+
+### Shapiro test - testing for normal distribution
 For testing the data for normal distribution (<5000 data points per column), the Shapiro test can be used (Shapiro & Wilk, 1965):
   
 `shapiro.test(file name[,x])`
   
 Comments: 
-* The [,1] is referring to the text column which should be analyzed
+* The [,x] is referring to the text column which should be analyzed
 * p <0.05: data is non-normal distributed
 * p ≥0.05: data is normal distributed
 
 For testing >5000 data points per column for normal distribution, the ad.test within the Nortest Packet can be used.  
   
+### Testing for equal variance  
 For testing the data for equal variance, the var.test can be used:  
   
 `var.test(file name[,x], file name[,y], alternative="two.sided")`
@@ -217,31 +227,34 @@ Comments:
 * Data can be either tested for “one.sided” or “two.sided”
 * p-value ≥ 0.05: equal variance
 * p-value < 0.05: unequal variance
+  
+### Mann-Witney-U test for non-parametric data
+Non-parametric data sets can be analyzed using the Mann-Whitney-U test:
 
-Non normal-distributed data sets can be analyzed using the Mann-Whitney-U test:
-
- >wilcox.test(file name[,x],file name[,y],alternative="two.sided")
-
-Comments:
-•	p-value ≥ 0.05: accept null hypothesis 
-•	p-value < 0.05: reject null hypothesis (significant difference)
-
-Normal-distributed data sets can be analyzed using a student’s t-test:
-
-> t.test(file name[,x],file name[,y],alternative="two.sided",var.equal=TRUE)
+`wilcox.test(file name[,x],file name[,y],alternative="two.sided")`
 
 Comments:
-•	in case the variance is not equal choose option: var.equal=FALSE
-•	p-value ≥ 0.05: accept null hypothesis 
-•	p-value < 0.05: reject null hypothesis (significant difference)
+* p-value ≥ 0.05: accept null hypothesis 
+* p-value < 0.05: reject null hypothesis (significant difference)
 
+### Student's t-test for parametric data
+Parametric data sets can be analyzed using a student’s t-test:
+
+`t.test(file name[,x],file name[,y],alternative="two.sided",var.equal=TRUE)`
+
+Comments:
+* in case the variance is not equal choose option: var.equal=FALSE
+* p-value ≥ 0.05: accept null hypothesis 
+* p-value < 0.05: reject null hypothesis (significant difference)
+  
+### Spearman's rank correlation
 Spearman's rank correlations (Hollander et al., 2013) are a non-parametric measure of statistical dependency between two variables. To perform a Spearman's rank correlation:
 
- >cor.test(file name[,x],file name[,y],alternative="greater",method=c("spearman"), exact =NULL, continuity = TRUE)
+`cor.test(file name[,x],file name[,y],alternative="greater",method=c("spearman"), exact =NULL, continuity = TRUE)`
 
 Comments:
-•	in case there is a negative association use: alternative =”less”
-•	Exact: a logical indicating whether an exact p-value should be computed or not
+* in case there is a negative association use: alternative =”less”
+* Exact: a logical indicating whether an exact p-value should be computed or not
 
 To estimate the strength of the association the Rho value can be used:
 Rho 0.00-0.19: very weak association
@@ -250,6 +263,15 @@ Rho 0.40-0,59: moderate association
 Rho 0.60-0.79: strong association
 Rho 0.80-1.00: very strong association
 
+# Test files
+If you want to test this pipeline, you may use the following transcriptomes (available on NCBI) and compare your results with our paper.
+* SRR7734429
+* SRR7734430
+* SRR7734431
+* SRR7734432
+* SRR7734435
+* SRR7734436  
+  
 # How to cite us?
 
 von Dahlen, J.K., Schulz, K., Nicolai, J., Rose, L.E. (2023): Global expression patterns of R-genes in tomato and potato. Frontiers in Plant Science.
